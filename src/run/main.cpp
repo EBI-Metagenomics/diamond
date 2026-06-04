@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <iostream>
+#include <execinfo.h>
+#include <unistd.h>
 #include "basic/config.h"
 #include "workflow.h"
 #ifdef WITH_MCL
@@ -79,9 +81,10 @@ int main(int ac, const char* av[])
 {
 	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
 	std::set_terminate([]() noexcept {
+		void* buf[64];
+		int n = backtrace(buf, 64);
+		backtrace_symbols_fd(buf, n, STDERR_FILENO);
 		std::abort();
-		// std::_Exit(EXIT_FAILURE);
-		// std::quick_exit(EXIT_FAILURE);
 		});
 	try {
 		init_motif_table();
