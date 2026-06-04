@@ -120,8 +120,10 @@ int FileStack::lock() {
             ::close(sfd);
             return 0;
         }
+        if (errno == ENOENT)
+            return 0;  // parent directory removed (cleanup in progress); no contention
         if (errno != EEXIST)
-            throw std::runtime_error("could not create lock sentinel for " + file_name_);
+            throw std::runtime_error("could not create lock sentinel for " + file_name_ + ": " + strerror(errno));
         sleep_for(sleep_time);
     }
     throw std::runtime_error("lock timeout on file " + file_name_);
