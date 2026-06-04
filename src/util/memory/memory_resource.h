@@ -43,6 +43,7 @@ namespace std { namespace pmr {
 struct memory_resource {};
 struct monotonic_buffer_resource : public memory_resource {};
 struct unsynchronized_pool_resource : public memory_resource {};
+struct synchronized_pool_resource : public memory_resource {};
 
 template<typename T>
 struct list : public std::list<T> {

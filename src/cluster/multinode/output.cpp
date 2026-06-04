@@ -143,7 +143,7 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 }
 
 static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile& volumes, const RadixedTable& round1) {
-	std::pmr::unsynchronized_pool_resource pool;
+	std::pmr::synchronized_pool_resource pool;
 	ofstream out(config.output_file);
 	if (!out.good())
 		throw runtime_error("Error opening output file: " + config.output_file);
