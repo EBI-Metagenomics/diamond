@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // #define DEBUG
 #undef DEBUG
+#include <cerrno>
 #include "filestack.h"
 
 using std::runtime_error;
@@ -92,6 +93,7 @@ FileStack::FileStack(const string & file_name, int maximum_line_length):
     if (fd == -1) {
         throw(std::runtime_error("could not open file " + file_name_));
     }
+    sentinel_path_ = file_name + ".lock";
 #endif
     set_max_line_length(maximum_line_length);
 }
@@ -110,22 +112,19 @@ int FileStack::lock() {
         throw runtime_error("could not put lock on file " + file_name_);
     return 0;
 #else
-    DBG("");
-    int fcntl_status = -1;
-    if (fd >= 0) {
-        memset(&lck, 0, sizeof(lck));
-        lck.l_type = F_WRLCK; // exclusive lock
-        lck.l_whence = SEEK_SET;
-        lck.l_start = 0;
-        lck.l_len = 0;
-        fcntl_status = fcntl(fd, F_SETLKW, &lck);
-        if (fcntl_status == -1) {
-            throw(std::runtime_error("could not put lock on file " + file_name_));
+    static const int max_iter = 7200;
+    static const auto sleep_time = std::chrono::milliseconds(500);
+    for (int i = 0; i < max_iter; ++i) {
+        int sfd = ::open(sentinel_path_.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0664);
+        if (sfd >= 0) {
+            ::close(sfd);
+            return 0;
         }
-    } else {
-        throw(std::runtime_error("could not put lock on non-open file " + file_name_));
+        if (errno != EEXIST)
+            throw std::runtime_error("could not create lock sentinel for " + file_name_);
+        sleep_for(sleep_time);
     }
-    return fcntl_status;
+    throw std::runtime_error("lock timeout on file " + file_name_);
 #endif
 }
 
@@ -139,17 +138,9 @@ int FileStack::unlock() {
     mtx_.unlock();
     return 0;
 #else
-    DBG("");
-    int fcntl_status = -1;
-    if (fd >= 0) {
-        lck.l_type = F_UNLCK;
-        fcntl_status = fcntl(fd, F_SETLKW, &lck);
-        if (fcntl_status == -1) {
-            throw(std::runtime_error("could not unlock file " + file_name_));
-        }
-    }
+    ::unlink(sentinel_path_.c_str());
     mtx_.unlock();
-    return fcntl_status;
+    return 0;
 #endif
 }
 

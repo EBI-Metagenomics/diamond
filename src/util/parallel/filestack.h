@@ -94,7 +94,7 @@ class FileStack {
         HANDLE hFile;
 #else
         int fd;
-        struct flock lck;
+        std::string sentinel_path_;
 #endif
         std::string file_name_;
         off_t max_line_length;
