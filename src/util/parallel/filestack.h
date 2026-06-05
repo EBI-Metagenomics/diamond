@@ -94,7 +94,11 @@ class FileStack {
         HANDLE hFile;
 #else
         int fd;
+#ifdef USE_SENTINEL_FILE_LOCK
+        bool sentinel_locked_ = false;
+#else
         struct flock lck;
+#endif
 #endif
         std::string file_name_;
         off_t max_line_length;
