@@ -72,6 +72,12 @@ void FileStack::close() {
         hFile = INVALID_HANDLE_VALUE;
     }
 #else
+#ifdef USE_SENTINEL_FILE_LOCK
+    if (sentinel_locked_) {
+        ::rmdir((file_name_ + ".sentinel_lock").c_str());
+        sentinel_locked_ = false;
+    }
+#endif
     if (fd >= 0) {
         ::close(fd);
         fd = -1;
@@ -109,6 +115,17 @@ int FileStack::lock() {
     if(!LockFileEx(hFile, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapvar))
         throw runtime_error("could not put lock on file " + file_name_);
     return 0;
+#elif defined(USE_SENTINEL_FILE_LOCK)
+    {
+        const std::string sentinel = file_name_ + ".sentinel_lock";
+        while (::mkdir(sentinel.c_str(), 0700) != 0) {
+            if (errno != EEXIST)
+                throw runtime_error("sentinel mkdir failed for " + sentinel + ": " + strerror(errno));
+            sleep_for(std::chrono::milliseconds(50));
+        }
+        sentinel_locked_ = true;
+    }
+    return 0;
 #else
     DBG("");
     int fcntl_status = -1;
@@ -136,6 +153,15 @@ int FileStack::unlock() {
     overlapvar.OffsetHigh = 0;
     if (!UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapvar))
         throw(std::runtime_error("could not unlock file " + file_name_));
+    mtx_.unlock();
+    return 0;
+#elif defined(USE_SENTINEL_FILE_LOCK)
+    {
+        const std::string sentinel = file_name_ + ".sentinel_lock";
+        sentinel_locked_ = false;
+        if (::rmdir(sentinel.c_str()) != 0)
+            throw runtime_error("sentinel rmdir failed for " + sentinel + ": " + strerror(errno));
+    }
     mtx_.unlock();
     return 0;
 #else
