@@ -119,8 +119,10 @@ int FileStack::lock() {
     {
         const std::string sentinel = file_name_ + ".sentinel_lock";
         while (::mkdir(sentinel.c_str(), 0700) != 0) {
-            if (errno != EEXIST)
-                throw runtime_error("sentinel mkdir failed for " + sentinel + ": " + strerror(errno));
+            if (errno != EEXIST) {
+                const int e = errno;
+                throw runtime_error("sentinel mkdir failed for " + sentinel + ": " + strerror(e));
+            }
             sleep_for(std::chrono::milliseconds(50));
         }
         sentinel_locked_ = true;
@@ -158,9 +160,11 @@ int FileStack::unlock() {
 #elif defined(USE_SENTINEL_FILE_LOCK)
     {
         const std::string sentinel = file_name_ + ".sentinel_lock";
+        if (::rmdir(sentinel.c_str()) != 0) {
+            const int e = errno;
+            throw runtime_error("sentinel rmdir failed for " + sentinel + ": " + strerror(e));
+        }
         sentinel_locked_ = false;
-        if (::rmdir(sentinel.c_str()) != 0)
-            throw runtime_error("sentinel rmdir failed for " + sentinel + ": " + strerror(errno));
     }
     mtx_.unlock();
     return 0;
