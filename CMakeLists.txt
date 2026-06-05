@@ -42,6 +42,7 @@ option(WITH_AVX512 "WITH_AVX512" OFF)
 option(WITH_DNA "WITH_DNA" OFF)
 option(WITH_MCL "WITH_MCL" OFF)
 option(USE_TLS "USE_TLS" OFF)
+option(USE_SENTINEL_FILE_LOCK "USE_SENTINEL_FILE_LOCK" OFF)
 
 set(MAX_SHAPE_LEN 19)
 
@@ -68,6 +69,10 @@ endif()
 
 if(USE_TLS)
   add_definitions(-DUSE_TLS)
+endif()
+
+if(USE_SENTINEL_FILE_LOCK)
+  add_definitions(-DUSE_SENTINEL_FILE_LOCK)
 endif()
 
 if(SEQ_MASK)
